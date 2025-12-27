@@ -1,0 +1,9 @@
+[
+    {
+        "query": "What is the deductible for the standard HMO plan?",
+        "ground_truth": "The standard HMO plan has a $500 deductible for individuals.",
+        "contexts": [
+            "benefits_summary_2025.pdf"
+        ]
+    }
+]

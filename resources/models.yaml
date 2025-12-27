@@ -1,0 +1,7 @@
+models:
+  - id: gpt-4o
+    provider: openai
+    type: chat
+  - id: text-embedding-ada-002
+    provider: openai
+    type: embedding
