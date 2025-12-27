@@ -1,0 +1,5 @@
+{
+  "api_url": "http://backend:8000",
+  "default_model": "gpt-4o",
+  "system_prompt": "You are a helpful assistant for Kaiser Customer Call Center agents."
+}

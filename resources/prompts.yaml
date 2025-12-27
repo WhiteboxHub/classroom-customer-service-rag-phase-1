@@ -1,0 +1,5 @@
+system:
+  default: "You are a helpful customer service assistant for Kaiser Permanente."
+  
+rag:
+  context_template: "Answer based on the following context:\n{context}\n\nQuestion: {question}"

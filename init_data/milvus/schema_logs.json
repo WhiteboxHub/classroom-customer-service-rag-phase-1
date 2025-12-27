@@ -1,0 +1,20 @@
+{
+    "collection": "logs",
+    "fields": [
+        {
+            "name": "id",
+            "type": "DataType.INT64",
+            "is_primary": true,
+            "auto_id": true
+        },
+        {
+            "name": "content",
+            "type": "DataType.VARCHAR",
+            "max_length": 65535
+        },
+        {
+            "name": "timestamp",
+            "type": "DataType.INT64"
+        }
+    ]
+}

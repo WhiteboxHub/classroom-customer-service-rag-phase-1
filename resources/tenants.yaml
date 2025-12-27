@@ -1,0 +1,4 @@
+tenants:
+  - id: default
+    name: "Default Tenant"
+    plan: "enterprise"

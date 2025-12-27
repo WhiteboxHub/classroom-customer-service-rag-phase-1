@@ -1,0 +1,25 @@
+{
+    "collection": "documents",
+    "fields": [
+        {
+            "name": "id",
+            "type": "DataType.INT64",
+            "is_primary": true,
+            "auto_id": true
+        },
+        {
+            "name": "embedding",
+            "type": "DataType.FLOAT_VECTOR",
+            "dim": 1536
+        },
+        {
+            "name": "text",
+            "type": "DataType.VARCHAR",
+            "max_length": 65535
+        },
+        {
+            "name": "metadata",
+            "type": "DataType.JSON"
+        }
+    ]
+}

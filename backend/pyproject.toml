@@ -1,0 +1,21 @@
+[project]
+name = "classroom-customer-service-rag-phase-1"
+version = "0.1.0"
+description = "Backend for Kaiser Customer Call Center Agent RAG"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "requests>=2.31.0",
+    "celery>=5.3.0",
+    "redis>=5.0.0",
+    # "langchain>=0.1.0", # Uncomment when ready to integrate
+    # "openai>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
