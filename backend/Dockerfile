@@ -1,19 +1,26 @@
-# Backend Dockerfile
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry or just use pip/pyproject.toml directly with pip
-# For this phase 1, we'll stick to a simple pip install from requirements or pyproject
+# Copy dependency metadata
 COPY pyproject.toml .
-RUN pip install --no-cache-dir .
 
-COPY . .
+# Install dependencies ONLY (no packaging)
+RUN pip install --no-cache-dir \
+    fastapi>=0.100.0 \
+    uvicorn>=0.23.0 \
+    pydantic>=2.0.0 \
+    pydantic-settings>=2.0.0 \
+    requests>=2.31.0 \
+    celery>=5.3.0 \
+    redis>=5.0.0
+
+# Copy app code
+COPY app ./app
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

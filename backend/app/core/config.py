@@ -1,3 +1,4 @@
+# classroom-customer-service-rag-phase-1\backend\app\core\config.py
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):

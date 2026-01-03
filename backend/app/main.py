@@ -7,7 +7,14 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Include routers
+# =================================================
+# OpenAI-compatible routes (REQUIRED for Open-WebUI)
+# =================================================
+app.include_router(chat.router, tags=["openai"])
+
+# =================================================
+# Internal versioned API
+# =================================================
 app.include_router(chat.router, prefix=settings.API_V1_STR, tags=["chat"])
 app.include_router(ingest.router, prefix=settings.API_V1_STR, tags=["ingestion"])
 app.include_router(admin.router, prefix=settings.API_V1_STR, tags=["admin"])
