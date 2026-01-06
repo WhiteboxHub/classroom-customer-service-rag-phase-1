@@ -14,9 +14,30 @@ class ChatCompletionRequest(BaseModel):
     messages: List[Message]
     stream: Optional[bool] = False
 
-@router.post("/v1/chat/completions")
-async def openai_compatible_chat(request: ChatCompletionRequest):
-    return await chat_completions(request)
+# @router.post("/v1/chat/completions")
+# async def openai_compatible_chat(request: ChatCompletionRequest):
+#     return await chat_completions(request)
+
+@router.get("/models")
+async def list_models():
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": "gpt-4",
+                "object": "model",
+                "created": 1677610602,
+                "owned_by": "openai"
+            },
+            {
+                "id": "gpt-3.5-turbo",
+                "object": "model",
+                "created": 1677610602,
+                "owned_by": "openai"
+            }
+        ]
+    }
+
 
 @router.post("/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):

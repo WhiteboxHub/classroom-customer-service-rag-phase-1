@@ -1,71 +1,63 @@
-# classroom-customer-service-rag-phase-1\docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
-  # API Gateway (Nginx)
-  gateway:
-    image: nginx:alpine
-    container_name: gateway
-    ports:
-      - "8080:80" # Exposed on localhost:8080
-    volumes:
-      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - backend
-      - open-webui
-
-  # Open WebUI (Frontend)
+  # ============================
+  # Open-WebUI (UI + its backend)
+  # ============================
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "8080:8080"
     environment:
-      - OPENAI_API_BASE_URL=http://gateway
+      # Point Open-WebUI directly to FastAPI (OpenAI-compatible)
+      - OPENAI_API_BASE_URL=http://backend:8000/v1
+      - OPENAI_API_BASE_URL=http://backend:8000
       - OPENAI_API_KEY=sk-dummy
-
+      - WEBUI_AUTH=true
     volumes:
-      - ./open-webui/config.json:/app/backend/config.json
       - open-webui-data:/app/backend/data
     depends_on:
       - backend
 
-  # Backend (FastAPI + Celery)
+  # ============================
+  # Backend (FastAPI RAG API)
+  # ============================
   backend:
     build:
       context: ./backend
     container_name: backend
     env_file: .env
     ports:
-    - "8000:8000"
+      - "8000:8000"
     depends_on:
       - postgres
       - redis
-      # - milvus
     volumes:
       - ./backend:/app
 
-  # Postgres (Relational Data)
+  # ============================
+  # Postgres
+  # ============================
   postgres:
     image: postgres:15-alpine
     container_name: postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-ragdb}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-rag_app}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./init_data/postgres:/docker-entrypoint-initdb.d
 
-  # Redis (Celery Broker & Cache)
+  # ============================
+  # Redis
+  # ============================
   redis:
     image: redis:7-alpine
     container_name: redis
     ports:
-      - "6379:6379" # Keeping exposed for local dev/inspection if needed, or remove for strictness
-  # Milvus (Vector DB)
-  # milvus:
-  #   image: milvusdb/milvus:latest
-  #   container_name: milvus
-  #   ports:
-  #     - "19530:19530"
+      - "6379:6379"
 
 volumes:
   open-webui-data:
