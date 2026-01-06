@@ -18,7 +18,12 @@ RUN pip install --no-cache-dir \
     pydantic-settings>=2.0.0 \
     requests>=2.31.0 \
     celery>=5.3.0 \
-    redis>=5.0.0
+    redis>=5.0.0 \
+    pyyaml>=6.0 \
+    pymilvus>=2.3.0 \
+    pypdf>=3.0.0 \
+    openai>=1.0.0 \
+    tiktoken>=0.5.0
 
 # Copy app code
 COPY app ./app
