@@ -101,7 +101,7 @@ This spins up the Gateway, Backend, Frontend, Databases, and Observability tools
 ```bash
 make up
 # OR
-docker-compose -f docker-compose.yml -f docker-compose.ops.yml up -d --build
+docker compose up -d
 ```
 
 ### 3. Access
