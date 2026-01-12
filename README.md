@@ -14,6 +14,7 @@ Customer service agents often struggle to find the right information quickly acr
 *   **Ingestion**: Process PDFs and other docs into a vector store.
 *   **Retrieval**: Semantic search using vector embeddings.
 *   **Generation**: LLM-based answer synthesis with citations.
+*   **MultiLingual support**:Ingest and retrieve content across multiple languages
 *   **Interface**: A user-friendly chat interface for agents.
 
 ---
