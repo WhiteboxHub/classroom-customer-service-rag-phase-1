@@ -1,34 +1,57 @@
-from openai import OpenAI
-import os
+# classroom-customer-service-rag-phase-1/backend/app/services/generation/embeddings.py
+
+from sentence_transformers import SentenceTransformer
+from app.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class EmbeddingService:
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
-        base_url = os.getenv("OPENAI_API_BASE_URL")
-        
-        
-        # NOTE: In this specific setup, the backend ITSELF needs to generate embeddings.
-        # It should talk to OpenAI directly.
-        if "backend" in str(base_url):
-             # clear the mock base url for the internal client
-             base_url = None
-             
-        self.client = OpenAI(api_key=api_key)
+        """
+        Centralized embedding service.
+
+        Uses a multilingual sentence-transformer model to ensure:
+        - Single shared vector space
+        - Cross-lingual retrieval
+        - No pipeline restructuring
+        """
+        self.model_name = settings.EMBEDDING_MODEL_NAME
+        self.model = SentenceTransformer(self.model_name)
+
+        # Capture embedding dimension dynamically
+        self.embedding_dim = self.model.get_sentence_embedding_dimension()
+
+        logger.info(
+            f"EmbeddingService initialized with model={self.model_name}, "
+            f"dim={self.embedding_dim}"
+        )
 
     def get_embedding(self, text: str) -> list[float]:
-        text = text.replace("\n", " ")
+        """
+        Generate embedding for a single text input.
+        """
         try:
-            return self.client.embeddings.create(input=[text], model="text-embedding-ada-002").data[0].embedding
+            embedding = self.model.encode(
+                text,
+                normalize_embeddings=True
+            )
+            return embedding.tolist()
         except Exception as e:
-            print(f"Error generating embedding: {e}")
-            return [0.0] * 1536 
+            logger.error(f"Error generating embedding: {e}")
+            return [0.0] * self.embedding_dim
 
     def get_embeddings(self, texts: list[str]) -> list[list[float]]:
-        # clean newlines
-        texts = [t.replace("\n", " ") for t in texts]
+        """
+        Generate embeddings for a batch of texts.
+        """
         try:
-            resp = self.client.embeddings.create(input=texts, model="text-embedding-ada-002")
-            return [d.embedding for d in resp.data]
+            embeddings = self.model.encode(
+                texts,
+                normalize_embeddings=True
+            )
+            return [emb.tolist() for emb in embeddings]
         except Exception as e:
-            print(f"Error generating embeddings batch: {e}")
-            return [[0.0]*1536 for _ in texts]
+            logger.error(f"Error generating embeddings batch: {e}")
+            return [[0.0] * self.embedding_dim for _ in texts]

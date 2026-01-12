@@ -2,16 +2,32 @@
 milvus.py
 Client wrapper for Milvus Vector Database.
 """
+
 import os
-from typing import List, Dict, Any
-from pymilvus import connections, Collection, FieldSchema, CollectionSchema, DataType, utility
+from typing import List, Dict, Any, Optional
+
+from pymilvus import (
+    connections,
+    Collection,
+    FieldSchema,
+    CollectionSchema,
+    DataType,
+    utility,
+)
+
+from app.services.generation.embeddings import EmbeddingService
+
 
 class MilvusClient:
     def __init__(self):
         self.host = os.getenv("MILVUS_HOST", "milvus")
         self.port = os.getenv("MILVUS_PORT", "19530")
         self.collection_name = "documents"
-        self.dim = 1536 # OpenAI embedding dimension
+
+        # Dynamically determine embedding dimension
+        self.embedder = EmbeddingService()
+        self.dim = self.embedder.embedding_dim
+
         self._connect()
         self._ensure_collection()
 
@@ -25,46 +41,87 @@ class MilvusClient:
     def _ensure_collection(self):
         if not utility.has_collection(self.collection_name):
             fields = [
-                FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
-                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=self.dim),
-                FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
-                FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=512),
-                FieldSchema(name="page", dtype=DataType.INT64)
+                FieldSchema(
+                    name="id",
+                    dtype=DataType.INT64,
+                    is_primary=True,
+                    auto_id=True,
+                ),
+                FieldSchema(
+                    name="embedding",
+                    dtype=DataType.FLOAT_VECTOR,
+                    dim=self.dim,
+                ),
+                FieldSchema(
+                    name="text",
+                    dtype=DataType.VARCHAR,
+                    max_length=65535,
+                ),
+                FieldSchema(
+                    name="source",
+                    dtype=DataType.VARCHAR,
+                    max_length=512,
+                ),
+                FieldSchema(
+                    name="page",
+                    dtype=DataType.INT64,
+                ),
+                # NEW: language metadata (scalar, filterable)
+                FieldSchema(
+                    name="language",
+                    dtype=DataType.VARCHAR,
+                    max_length=16,
+                ),
             ]
+
             schema = CollectionSchema(fields, "Document chunks")
             collection = Collection(self.collection_name, schema)
-            # Create index for faster search
+
             index_params = {
                 "metric_type": "L2",
                 "index_type": "IVF_FLAT",
-                "params": {"nlist": 1024}
+                "params": {"nlist": 1024},
             }
-            collection.create_index(field_name="embedding", index_params=index_params)
+            collection.create_index(
+                field_name="embedding",
+                index_params=index_params,
+            )
+            collection.load()
+
             print(f"Created collection {self.collection_name}")
         else:
             print(f"Collection {self.collection_name} exists")
-            self.collection = Collection(self.collection_name)
-            self.collection.load()
+            collection = Collection(self.collection_name)
+            collection.load()
 
-    async def upsert(self, chunks: List[str], metadata: Dict[str, Any], embeddings: List[List[float]]):
-        print(f"Upserting {len(chunks)} chunks to Milvus collection {self.collection_name}")
-        
+    async def upsert(
+        self,
+        chunks: List[str],
+        metadata: List[Dict[str, Any]],
+        embeddings: List[List[float]],
+    ):
+        """
+        Upsert document chunks with per-chunk metadata.
+        """
+        print(
+            f"Upserting {len(chunks)} chunks to Milvus collection "
+            f"{self.collection_name}"
+        )
+
         collection = Collection(self.collection_name)
-        
-        # Prepare data for insertion
-        # Milvus expects column-based data
+
+        sources = [m.get("source", "unknown") for m in metadata]
+        pages = [m.get("page", 0) for m in metadata]
+        languages = [m.get("language", "en") for m in metadata]
+
         entities = [
-            embeddings, 
-            chunks,     
-            [metadata.get("source", "unknown")] * len(chunks),
-            [metadata.get("page", 0)] * len(chunks) 
+            embeddings,
+            chunks,
+            sources,
+            pages,
+            languages,
         ]
-        
-        # NOTE: If we are passing per-chunk metadata, we should adjust the arguments.
-        # For now, let's assume 'metadata' applies to the whole batch or we get a list of metadata.
-        # Let's adjust upsert signature in caller or handle it here. 
-        # Assuming simple case: Upserting chunks from ONE document.
-        
+
         try:
             collection.insert(entities)
             collection.flush()
@@ -74,27 +131,40 @@ class MilvusClient:
             print(f"Upsert failed: {e}")
             return False
 
-    async def search(self, query_vector: List[float], limit: int = 5):
+    async def search(
+        self,
+        query_vector: List[float],
+        limit: int = 5,
+        language: Optional[str] = None,
+    ):
+        """
+        Vector search with optional language filtering.
+        """
         print("Searching Milvus...")
         collection = Collection(self.collection_name)
         collection.load()
-        
+
         search_params = {
             "metric_type": "L2",
             "params": {"nprobe": 10},
         }
-        
+
+        expr = None
+        if language:
+            expr = f"language == '{language}'"
+
         results = collection.search(
-            data=[query_vector], 
-            anns_field="embedding", 
-            param=search_params, 
-            limit=limit, 
-            output_fields=["text", "source", "page"]
+            data=[query_vector],
+            anns_field="embedding",
+            param=search_params,
+            limit=limit,
+            expr=expr,
+            output_fields=["text", "source", "page", "language"],
         )
-        
+
         retrieved = []
         for hits in results:
             for hit in hits:
                 retrieved.append(hit.entity.get("text"))
-                
+
         return retrieved

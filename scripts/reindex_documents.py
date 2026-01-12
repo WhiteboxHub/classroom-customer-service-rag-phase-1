@@ -1,11 +1,38 @@
 """
 reindex_documents.py
-Script to trigger reindexing of documents.
+Reindex documents using the current ingestion pipeline.
 """
 
+import asyncio
+
+from app.services.ingestion.orchestrator import IngestionOrchestrator
+
+
+async def reindex():
+    print("Starting document reindexing...")
+
+    orchestrator = IngestionOrchestrator()
+
+    # NOTE:
+    # Replace this with your real document source
+    # (DB, filesystem, object storage, etc.)
+    documents = []  # TODO: fetch documents to reindex
+
+    for doc in documents:
+        metadata = {
+            "id": doc["id"],
+            "source": doc.get("source", doc["id"]),
+        }
+        content = doc["content"]
+
+        await orchestrator.ingest_document(metadata, content)
+
+    print("Document reindexing completed.")
+
+
 def main():
-    print("Reindexing documents...")
-    # Logic to call backend reindex endpoint or service
+    asyncio.run(reindex())
+
 
 if __name__ == "__main__":
     main()
