@@ -29,16 +29,16 @@ async def list_models():
     def get_fallback_models():
         return [
             {
-                "id": "gpt-4",
+                "id": "llama-3.3-70b-versatile",
                 "object": "model",
                 "created": 1677610602,
-                "owned_by": "openai"
+                "owned_by": "groq"
             },
             {
-                "id": "gpt-3.5-turbo",
+                "id": "llama-3.1-8b-instant",
                 "object": "model",
                 "created": 1677610602,
-                "owned_by": "openai"
+                "owned_by": "groq"
             }
         ]
 
@@ -99,7 +99,7 @@ async def chat_completions(request: ChatCompletionRequest):
     from app.services.retrieval.vector_store.milvus import MilvusClient
     vector_store = MilvusClient()
     try:
-        context_docs = await vector_store.search(query_vector, limit=3)
+        context_docs = await vector_store.search(query_vector, limit=5)
         context_text = "\n\n".join(context_docs)
     except Exception as e:
         print(f"Retrieval failed: {e}")
@@ -115,15 +115,41 @@ Context:
 {context_text}
 """
     
-    # 5. Call LLM (OpenAI)
+    # 5. Call LLM (supports both Groq and OpenAI)
     import os
     from openai import OpenAI
     
-    api_key = os.getenv("OPENAI_API_KEY")
+    # Determine which LLM provider to use
+    llm_provider = os.getenv("LLM_PROVIDER", "groq").lower()
     
-    base_url = os.getenv("OPENAI_API_BASE_URL")
-    if base_url and "backend" in base_url:
-        base_url = None # Default to OpenAI public API
+    if llm_provider == "openai":
+        # OpenAI configuration
+        api_key = os.getenv("OPENAI_API_KEY")
+        base_url = None  # Use default OpenAI endpoint
+        default_model = "gpt-4o-mini"
+        print(f"Using OpenAI LLM provider")
+    else:
+        # Groq configuration (default)
+        api_key = os.getenv("GROQ_API_KEY")
+        base_url = "https://api.groq.com/openai/v1"
+        default_model = "llama-3.3-70b-versatile"
+        print(f"Using Groq LLM provider")
+    
+    if not api_key:
+        return {
+            "id": "error",
+            "object": "chat.completion",
+            "created": 0,
+            "model": request.model,
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": f"Error: No API key configured for {llm_provider.upper()}. Please set {llm_provider.upper()}_API_KEY environment variable."
+                },
+                "finish_reason": "stop"
+            }]
+        }
         
     client = OpenAI(api_key=api_key, base_url=base_url)
     
@@ -144,7 +170,7 @@ Context:
     
     try:
         response = client.chat.completions.create(
-            model=request.model or "gpt-3.5-turbo",
+            model=request.model or default_model,
             messages=messages,
             stream=False # simplified for now
         )

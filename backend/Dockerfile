@@ -5,6 +5,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
+    chromium \
+    chromium-driver \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency metadata
@@ -23,7 +25,11 @@ RUN pip install --no-cache-dir \
     pymilvus>=2.3.0 \
     pypdf>=3.0.0 \
     openai>=1.0.0 \
-    tiktoken>=0.5.0
+    tiktoken>=0.5.0 \
+    selenium>=4.0.0 \
+    beautifulsoup4>=4.0.0 \
+    docling \
+    sentence-transformers
 
 # Copy app code
 COPY app ./app

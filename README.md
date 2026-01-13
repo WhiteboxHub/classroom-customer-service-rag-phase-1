@@ -1,160 +1,421 @@
-# Classroom Customer Service RAG - Phase 1
+# RAG Phase 1 - Kaiser Customer Service Assistant
 
-**Kaiser Customer Call Center Agent**
-
-This project implements Phase 1 of the Retrieval Augmented Generation (RAG) system for the Kaiser Customer Call Center. It is designed to assist agents by providing accurate, context-aware answers derived from internal documentation.
+A complete Retrieval Augmented Generation (RAG) system for Kaiser Permanente customer service, featuring multi-source data ingestion, local embeddings, and dual LLM provider support (Groq/OpenAI).
 
 ---
 
-## 💡 The Idea
+## 🎯 Overview
 
-Customer service agents often struggle to find the right information quickly across multiple disconnected knowledge bases. This project unifies these sources into a single RAG pipeline.
+This RAG system helps customer service agents quickly find accurate information from multiple knowledge sources including PDFs, web pages, and text documents.
 
-**Phase 1 Goals:**
-*   **Ingestion**: Process PDFs and other docs into a vector store.
-*   **Retrieval**: Semantic search using vector embeddings.
-*   **Generation**: LLM-based answer synthesis with citations.
-*   **Interface**: A user-friendly chat interface for agents.
+### Key Features
+
+✅ **Multi-Source Ingestion**: PDFs, HTML, Text files, JSON  
+✅ **Web Scraping**: Selenium + BeautifulSoup for dynamic content  
+✅ **Local Embeddings**: sentence-transformers (no API costs)  
+✅ **Dual LLM Support**: Groq (default) or OpenAI  
+✅ **Vector Search**: Milvus for fast retrieval  
+✅ **Modern UI**: Open-WebUI chat interface  
+✅ **Production Ready**: Docker containerized  
 
 ---
 
-## 🏗 Design & Architecture
+## 🏗️ Architecture
 
-The system follows a microservices architecture orchestrated via Docker Compose.
-
-```mermaid
-graph TD
-    User[Agent] -->|HTTP/80| Gateway[NGINX Gateway]
-    Gateway -->|/| WebUI[Open WebUI]
-    Gateway -->|/api| Backend[Backend API]
-    
-    WebUI -->|Internal API| Backend
-    
-    Backend -->|Read/Write| DB[(Postgres)]
-    Backend -->|Cache/Queue| Redis[(Redis)]
-    Backend -->|Vectors| Milvus[(Milvus)]
-    
-    Backend -->|Async Tasks| Celery[Celery Workers]
-    Celery --> Redis
-    
-    subgraph Observability
-        Prometheus -->|Scrape| Backend
-        Grafana -->|Query| Prometheus
-    end
+```
+User → Open-WebUI → FastAPI Backend → [Embeddings + Milvus + LLM] → Response
 ```
 
 ### Components
 
-*   **API Gateway (Nginx)**: Entry point for all traffic. Handles routing and basic security.
-*   **Frontend (Open WebUI)**: customized interface for chat interactions.
-*   **Backend (FastAPI)**: Core logic for RAG, ingestion, and management.
-    *   **Services**: Modularized logic for ingestion, retrieval, generation.
-    *   **API**: RESTful endpoints for all operations.
-*   **Data Layer**:
-    *   **Postgres**: Relational data (Tenants, Chat History).
-    *   **Redis**: Caching and Celery message broker.
-    *   **Milvus**: High-performance vector database.
+- **Open-WebUI** (Port 8080): Chat interface
+- **FastAPI Backend** (Port 8000): RAG logic
+- **Milvus**: Vector database for semantic search
+- **PostgreSQL**: Metadata storage
+- **Redis**: Caching
+- **Groq/OpenAI**: LLM providers
+
+### Data Flow
+
+1. **Ingestion**: Web scraping → Docling processing → Chunking → Embedding → Milvus
+2. **Query**: User question → Embed → Vector search → Context retrieval → LLM → Answer
 
 ---
 
-## 📂 Folder Structure
-
-How to navigate the codebase:
-
-```text
-.
-├── backend/                # Core Application
-│   ├── app/
-│   │   ├── api/v1/         # Endpoints (chat, ingest, admin, etc.)
-│   │   ├── core/           # Config & Settings
-│   │   ├── services/       # RAG logic (ingestion, retrieval, generation)
-│   │   └── workers/        # Celery task definitions
-│   ├── scripts/            # Maintenance scripts (reindex, backfill)
-│   └── tests/              # Unit and Integration tests
-├── open-webui/             # Frontend Configuration
-│   └── pipelines/          # Custom RAG pipeline logic
-├── gateway/                # Nginx Configuration
-├── evaluation/             # RAGAS datasets & runners
-├── observability/          # Prometheus & Grafana configs
-├── init_data/              # Database schema seeds
-├── infrastructure/         # IaC (Termination, Helm) files
-├── docker-compose.yml      # Main stack definition
-└── Makefile                # Developer shortcuts
-```
-
----
-
-## 🚀 How to Run
+## 🚀 Quick Start
 
 ### Prerequisites
-*   Docker & Docker Compose
-*   Make (optional)
 
-### 1. Configuration
-Copy the template and fill in your secrets (OpenAI API Key, Database creds).
+- Docker & Docker Compose
+- Internet connection (for first-time model downloads)
+
+### 1. Start Services
+
 ```bash
-cp .env.example .env
+cd classroom-customer-service-rag-phase-1
+docker-compose up -d
 ```
 
-### 2. Start the Stack
-This spins up the Gateway, Backend, Frontend, Databases, and Observability tools.
+### 2. First Startup (Includes Automatic Ingestion)
+
 ```bash
-make up
-# OR
-docker compose up -d
+docker-compose up -d
 ```
 
-### 3. Access
-*   **Application**: [http://localhost:8080](http://localhost:8080)
-*   **API Documentation**: [http://localhost:8080/docs](http://localhost:8080/docs)
-*   **Grafana**: [http://localhost:3001](http://localhost:3001)
+**What happens automatically**:
+- ✅ All services start (Backend, Milvus, PostgreSQL, Redis, Open-WebUI)
+- ✅ **Ingestion runs automatically** (scrapes web content, processes PDFs)
+- ✅ ~2,100 chunks embedded and stored in Milvus
+- ⏱️ Takes ~5 minutes on first run
 
----
-
-## 📖 How to Use
-
-### For Developers
-1.  **Ingestion**: Use the `/api/v1/ingest` endpoint to trigger document processing.
-2.  **Chat**: Use the `/api/v1/chat/completions` endpoint for OpenAI-compatible chat.
-3.  **Admin**: Manage tenants via `/api/v1/tenants`.
-
-### For Agents
-1.  Log in to the Web UI.
-2.  Select the **RAG Pipeline** model.
-3.  Ask questions about Kaiser policies.
-
----
-
-## 🧪 How to Test
-
-### Automated Tests
-Run the pytest suite within the backend container:
+**Check ingestion progress**:
 ```bash
-make test
+docker-compose logs -f ingestion
 ```
 
-### Evaluation
-Run RAGAS metrics against the golden dataset:
-```bash
-docker-compose exec backend python -m evaluation.runners.ragas_runner
+**Note**: Ingestion only runs on first startup. Data persists in Milvus between restarts.
+
+### 3. Access Application
+
+**Open-WebUI**: http://localhost:8080
+
+1. Create an account (first user becomes admin)
+2. Select model: `llama-3.3-70b-versatile`
+3. Start asking questions!
+
+### Example Questions
+
+```
+- What are the provider responsibilities?
+- Tell me about community providers
+- Explain the contracting process
+- What information is in the HMO manual?
 ```
 
 ---
 
-## 🚢 How to Deploy
+## ⚙️ Configuration
 
-### Docker Compose (Single Node)
-The provided `docker-compose.yml` is production-ready for single-node deployments. Ensure `.env` is secure and `debug` mode is off.
+### LLM Provider Setup
 
-### Kubernetes (Helm)
-For scaling, use the charts in the `infrastructure/helm` directory (placeholder).
-1.  Build images and push to registry.
-2.  Update `values.yaml` with image tags.
-3.  `helm install rag-app ./infrastructure/helm/rag-chart`
+The system supports both **Groq** (default) and **OpenAI**.
+
+#### Using Groq (Default)
+
+```bash
+# .env file
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+#### Using OpenAI
+
+```bash
+# .env file
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+#### Switch Between Providers
+
+1. Edit `.env` file
+2. Restart backend: `docker-compose restart backend`
+3. Select appropriate model in UI
+
+**Available Models:**
+
+- **Groq**: `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`
+- **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `gpt-3.5-turbo`
+
+The system automatically routes to the correct API based on selected model!
+
+### Environment Variables
+
+```bash
+# LLM Provider
+LLM_PROVIDER=groq                    # "groq" or "openai"
+GROQ_API_KEY=your_groq_key_here
+OPENAI_API_KEY=your_openai_key_here
+
+# Database
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=rag_app
+
+# Vector Database
+MILVUS_HOST=milvus
+MILVUS_PORT=19530
+```
 
 ---
 
-## 🛠 Maintenance
+## 📂 Project Structure
 
-*   **Reindexing**: `python backend/scripts/reindex_documents.py`
-*   **Backups**: `docker-compose exec postgres pg_dump -U user ragdb > backup.sql`
+```
+classroom-customer-service-rag-phase-1/
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/
+│   │   │   └── chat.py              # Chat API with RAG logic
+│   │   ├── services/
+│   │   │   ├── ingestion/
+│   │   │   │   ├── scrapers.py      # Web scraping
+│   │   │   │   ├── docling_processor.py  # Document processing
+│   │   │   │   └── orchestrator.py  # Ingestion pipeline
+│   │   │   ├── chunking/
+│   │   │   │   └── semantic.py      # Semantic chunking
+│   │   │   ├── generation/
+│   │   │   │   └── embeddings.py    # Local embeddings
+│   │   │   └── retrieval/
+│   │   │       └── vector_store/
+│   │   │           └── milvus.py    # Milvus client
+│   ├── trigger_ingest.py            # Main ingestion script
+│   └── Dockerfile
+├── resources/
+│   ├── source_docs/                 # All documents
+│   └── models.yaml                  # Available LLM models
+├── docker-compose.yml
+└── .env                             # Configuration
+```
+
+---
+
+## 🔄 Data Ingestion
+
+### Supported File Types
+
+- PDF (`.pdf`) - via Docling
+- HTML (`.html`) - via Docling
+- Text (`.txt`) - direct read
+- JSON (`.json`) - direct parse
+- DOCX (`.docx`) - via Docling
+
+### Ingestion Pipeline
+
+The `trigger_ingest.py` script:
+
+1. **Scrapes** web content (HTML/Text)
+2. **Saves** to `resources/source_docs/`
+3. **Processes** all files with Docling
+4. **Chunks** content semantically
+5. **Embeds** using local sentence-transformers
+6. **Stores** in Milvus vector database
+
+### Add New Documents
+
+1. Place files in `resources/source_docs/`
+2. Run: `python3 backend/trigger_ingest.py`
+
+### Add New Web Sources
+
+Edit `backend/trigger_ingest.py`:
+
+```python
+# Add new scraping
+scraper.scrape_html("https://your-url.com", "output.html")
+scraper.scrape_text("https://your-url.com", "output.txt")
+```
+
+---
+
+## 🧪 Testing
+
+### Verify Services
+
+```bash
+# Check all services running
+docker-compose ps
+
+# Check backend logs
+docker-compose logs -f backend
+
+# Test API
+curl http://localhost:8000/v1/models
+```
+
+### Test Queries
+
+Try these questions to verify the system:
+
+1. **Simple Query**: "What is Kaiser Permanente?"
+2. **Document-Specific**: "What are provider responsibilities?"
+3. **Web Content**: "Tell me about community providers"
+4. **Out-of-Scope**: "What is the weather?" (should say "I don't know")
+
+### Performance Metrics
+
+- **Query Latency**: ~1.5-2.5 seconds
+- **Embedding**: ~50ms (local)
+- **Vector Search**: ~100ms
+- **LLM Generation**: ~1-2s
+
+---
+
+## 🛠️ Common Commands
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# Restart backend
+docker-compose restart backend
+
+# View logs
+docker-compose logs -f backend
+
+# View ingestion logs
+docker-compose logs -f ingestion
+
+# Manually re-run ingestion (if you add new documents)
+docker-compose restart ingestion
+
+# Check Milvus data
+docker-compose logs milvus
+
+# Rebuild after code changes
+docker-compose build backend
+docker-compose up -d backend
+```
+
+---
+
+## 📊 System Status
+
+### Ingested Data
+
+| Source Type | Files | Chunks | Status |
+|-------------|-------|--------|--------|
+| PDF | 2 | ~2,051 | ✅ |
+| HTML | 1 | 43 | ✅ |
+| Text | 2 | 10 | ✅ |
+| **Total** | **5** | **~2,104** | **✅** |
+
+### Available Models
+
+| Provider | Model | Speed | Quality | Cost |
+|----------|-------|-------|---------|------|
+| Groq | llama-3.3-70b-versatile | ⚡⚡⚡ | ⭐⭐⭐⭐ | 💰 |
+| Groq | llama-3.1-8b-instant | ⚡⚡⚡⚡ | ⭐⭐⭐ | 💰 |
+| OpenAI | gpt-4o | ⚡⚡ | ⭐⭐⭐⭐⭐ | 💰💰💰 |
+| OpenAI | gpt-4o-mini | ⚡⚡⚡ | ⭐⭐⭐⭐ | 💰💰 |
+| OpenAI | gpt-3.5-turbo | ⚡⚡⚡ | ⭐⭐⭐ | 💰💰 |
+
+---
+
+## 🔧 Troubleshooting
+
+### Services Won't Start
+
+```bash
+# Check Docker
+docker --version
+docker-compose --version
+
+# Check logs
+docker-compose logs
+
+# Restart everything
+docker-compose down
+docker-compose up -d
+```
+
+### No Results from Queries
+
+```bash
+# Verify data ingestion
+python3 backend/trigger_ingest.py
+
+# Check Milvus
+docker-compose logs milvus
+
+# Restart backend
+docker-compose restart backend
+```
+
+### API Key Errors
+
+```bash
+# Check .env file has correct keys
+cat .env | grep API_KEY
+
+# Verify provider setting
+cat .env | grep LLM_PROVIDER
+
+# Restart backend
+docker-compose restart backend
+```
+
+### Slow Responses
+
+- Try smaller model: `llama-3.1-8b-instant`
+- Check Groq API status
+- Reduce context chunks in `chat.py` (limit=3 → limit=2)
+
+---
+
+## 🔐 Security
+
+⚠️ **Important**:
+
+- Never commit API keys to version control
+- Use `.env` file (already in `.gitignore`)
+- Rotate keys regularly
+- Use different keys for dev/prod
+- Monitor API usage
+
+---
+
+## 📈 Performance Optimization
+
+### For Development
+- Use `llama-3.1-8b-instant` (fast iteration)
+- Lower cost, quick responses
+
+### For Production
+- Use `llama-3.3-70b-versatile` (best balance)
+- Or `gpt-4o-mini` if using OpenAI
+
+### For Maximum Quality
+- Use `gpt-4o` when accuracy is critical
+- Higher cost but best results
+
+---
+
+## 🚀 Next Steps (Phase 2+)
+
+Potential enhancements:
+
+1. **Real Confluence Integration**
+2. **Advanced Chunking** (hierarchical/sliding window)
+3. **Metadata Enrichment** (dates, authors, sections)
+4. **Hybrid Search** (vector + keyword)
+5. **Re-ranking** (cross-encoder)
+6. **Monitoring** (Prometheus, Grafana)
+7. **Authentication** (secure API/UI)
+8. **Multi-tenancy**
+9. **Incremental Updates**
+10. **Analytics Dashboard**
+
+---
+
+## 📝 License & Credits
+
+- **Docling**: IBM Research
+- **sentence-transformers**: UKPLab
+- **Milvus**: Zilliz
+- **Groq**: Groq Inc.
+- **Open-WebUI**: Open-WebUI Team
+
+---
+
+## 📞 Support
+
+For issues:
+1. Check logs: `docker-compose logs -f`
+2. Verify services: `docker-compose ps`
+3. Review this README
+
+

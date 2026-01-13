@@ -8,10 +8,10 @@ from pymilvus import connections, Collection, FieldSchema, CollectionSchema, Dat
 
 class MilvusClient:
     def __init__(self):
-        self.host = os.getenv("MILVUS_HOST", "milvus")
+        self.host = os.getenv("MILVUS_HOST", "localhost")
         self.port = os.getenv("MILVUS_PORT", "19530")
-        self.collection_name = "documents"
-        self.dim = 1536 # OpenAI embedding dimension
+        self.collection_name = "documents_384"
+        self.dim = 384 # sentence-transformers dim
         self._connect()
         self._ensure_collection()
 

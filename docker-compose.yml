@@ -12,7 +12,7 @@ services:
     environment:
       # Point Open-WebUI directly to FastAPI (OpenAI-compatible)
       - OPENAI_API_BASE_URL=http://backend:8000/v1
-      - OPENAI_API_KEY=sk-dummy
+      - GROQ_API_KEY=
       - WEBUI_AUTH=true
     volumes:
       - open-webui-data:/app/backend/data
@@ -27,6 +27,12 @@ services:
       context: ./backend
     container_name: backend
     env_file: .env
+    environment:
+      # LLM Provider: "groq" or "openai"
+      - LLM_PROVIDER=${LLM_PROVIDER:-groq}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - MILVUS_HOST=milvus
     ports:
       - "8000:8000"
     depends_on:
@@ -35,6 +41,26 @@ services:
     volumes:
       - ./backend:/app
       - ./resources:/resources
+
+  # ============================
+  # Ingestion (Runs on First Startup)
+  # ============================
+  # This automatically scrapes web content and processes all documents
+  # It will run once when you do 'docker-compose up -d'
+  ingestion:
+    build:
+      context: ./backend
+    container_name: ingestion
+    env_file: .env
+    environment:
+      - MILVUS_HOST=milvus
+    depends_on:
+      - milvus
+    volumes:
+      - ./backend:/app
+      - ./resources:/resources
+    command: python trigger_ingest.py
+    restart: "no"  # Only runs once, then exits
 
   # ============================
   # Postgres

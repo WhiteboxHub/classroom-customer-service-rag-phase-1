@@ -1,0 +1,148 @@
+Frequently asked questions | Kaiser Permanente
+Menu
+My Account
+Sign out
+My Account
+Error
+There's a chat in progress.
+National
+Home
+COVID-19
+Eligibility
+Authorizations
+Claims
+Provider information
+National Transplant Services
+Self-funded program
+Online Provider Tools
+Frequently asked questions
+Frequently Asked Questions
+Online Affiliate – Frequently Asked Questions
+1. I work as a third-party administrator for a provider group/organization, are there additional forms I need to complete to gain access to Online Affiliate?
+If you are part of a third-party organization and are contracted to perform claim, billing, or patient verification services on behalf of a provider group, additional forms are required.
+Please send an email to your Online Affiliate
+regional representative
+﻿
+and request third-party administrator access forms.
+2. I am already registered but need to modify my account profile and/or add a new provider Tax ID association.
+You can make changes to your user account profile by signing in to "Manage my account."
+Manage my account
+:
+https://accessnow-ap.kp.org/kpim-ap/secure
+﻿
+Once signed in, you can make the following account changes:
+Remove a provider Tax ID association.
+Edit your user profile such as personal, work, and supervisor information
+Initiate a request to add a new provider Tax ID association or register for a new region. Please ensure your group has a provider entity agreement on file before adding a new provider Tax ID association or region. You may reach out to your Online Affiliate
+regional representative
+﻿
+to confirm we received an entity agreement.
+Please refer to the
+User Registration Guide
+﻿
+* for additional instructions on making changes to your account profile.
+Figure 1. Manage my account home screen – My account
+3. I have forgotten my password or lost my User ID. How do I reset my password or locate my User ID?
+You may use our self-service feature to locate your User ID or reset your password.
+Forgot your User ID
+﻿
+Password reset
+﻿
+Please be advised of the password guidelines on page 16 of the
+User Registration Guide
+﻿
+. If your new password does not fit the guidelines, you will receive an error message.
+Refer to the
+User Registration Guide
+﻿
+for additional details for resetting your password.
+4. I was previously able to login to my Online Affiliate account but now am getting an error.
+If you are having issues logging into Online Affiliate and could successfully sign in previously, please try the following troubleshooting activities.
+Clear your internet cookies and cache.
+You can do this by opening your internet browser settings (or titled options) to clear your cache and cookies. If you are using Google Chrome, be sure to set "Time Range" to "All time."
+Once cleared, close out all your open browsers and proceed to sign on.
+If the issue persists, send an email to your Online Affiliate
+regional representative
+﻿
+and describe the error you received and the troubleshooting steps you took.
+5. I am having issues with logging in to the Tridiuum Behavioral Health portal.
+(Only applicable for California regions)
+If you are experiencing technical or login issues with the Triduum Behavioral Health portal, please send an email to your regional Tridiuum application support representative:
+Southern California:
+SCAL-BH-Panel@kp.org
+Northern California:
+MentalHealthExternalProviderQA@kp.org
+6. I have an existing account but am now employed with a different group. How do I update my email address and provider associations?
+You can update your email address, work information, and provider association by signing in to “Manage my account” and selecting ‘Profile”.
+Manage my account
+:
+https://accessnow-ap.kp.org/kpim-ap/secure
+﻿
+Refer to question 2 on how you can make changes to your user account profile.
+Figure 2 Manage my account home screen – ProfileManage my account profilescreen
+7. How do I know which Tax ID’s I have access to?
+You can view your provider Tax ID associations by signing in to “Manage my account”, and selecting “Provider associations and access”.
+Manage my account:
+https://accessnow-ap.kp.org/kpim-ap/secure
+﻿
+See question 2 on how you can make changes to your user account profile.
+Figure 3 Manage my account home screen – Provider associations and accessManage my account provider association
+8. My group updated its Tax ID. How do I update this to reflect in my Online Affiliate account?
+If your group has changed its Tax ID, please notify your Online Affiliate
+regional representative
+﻿
+* to make the appropriate changes in our systems. You may need to submit proof of the Tax ID change by providing a copy of your W9.
+In addition, you will need to submit a request to add your new Tax ID association (refer to question 2 on making changes to your user account).
+For contracted providers only.
+You may need to notify your contracting team of the Tax ID change. Please refer to your region's provider manual on how to do so:
+SCAL Professional contracts:
+You may fax notice of your Tax ID/EIN change to the following: 877-516-0126,
+or send by email to
+Professional-ContractRequest@kp.org
+9. I have Online Affiliate access to multiple Kaiser Permanente regions/areas. How can I navigate from region to region?
+If you were approved for access to multiple regions, you can easily navigate from region to region within the “Manage my account” section.
+Manage my account
+:
+https://accessnow-ap.kp.org/kpim-ap/secure
+﻿
+Figure 4. Manage my account home screen – Regional portal links
+Back to top
+One moment
+Switching to {{aocRegion}}
+Visit our other sites
+Permanente Advantage
+California – Northern
+California – Southern
+Colorado
+Georgia
+Hawaii
+Mid-Atlantic States
+Northwest
+Washington
+Cigna Providers Outside a Kaiser Permanente State (Outside CA, CO, DC, GA, HI, MD, OR, VA, WA)
+Privacy Practices
+Terms & Conditions
+Technical Information
+Privacy Practices
+Terms & Conditions
+Technical Information
+Follow Us
+*National Provider Contracting and Strategy is responsible for providers or vendors contracted with a National Agreement or any form of national contract with KP.
+Selecting these links
+will take you away from KP.org. Kaiser Permanente is not responsible for the content or policies of external websites.
+Details
+Adobe Acrobat
+﻿
+is required to read PDFs.
+© {{currentyear}} Kaiser Foundation Health Plan, Inc.
+Importante
+No volver a mostrar esto.
+Continuar
+Cancelar
+Want to stay signed on?
+Sign Off
+Stay signed on
+We are unable to switch you to this area of care
+Close
+We’re getting your information
+Close
