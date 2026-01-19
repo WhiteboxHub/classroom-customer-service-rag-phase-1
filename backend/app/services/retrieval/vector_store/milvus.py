@@ -8,10 +8,10 @@ from pymilvus import connections, Collection, FieldSchema, CollectionSchema, Dat
 
 class MilvusClient:
     def __init__(self):
-        self.host = os.getenv("MILVUS_HOST", "localhost")
-        self.port = os.getenv("MILVUS_PORT", "19530")
-        self.collection_name = "documents_384"
-        self.dim = 384 # sentence-transformers dim
+        self.host = os.getenv("MILVUS_HOST")
+        self.port = os.getenv("MILVUS_PORT")
+        self.collection_name = "documents_768"
+        self.dim = 768 # e5-base-v2 dim
         self._connect()
         self._ensure_collection()
 
@@ -28,19 +28,33 @@ class MilvusClient:
                 FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
                 FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=self.dim),
                 FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
+                
+                # --- Multi-tenant & Metadata Layer Fields ---
+                FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=64),
+                FieldSchema(name="document_id", dtype=DataType.VARCHAR, max_length=256),
                 FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=512),
+                FieldSchema(name="source_system", dtype=DataType.VARCHAR, max_length=64),
+                FieldSchema(name="language", dtype=DataType.VARCHAR, max_length=16),
+                FieldSchema(name="version", dtype=DataType.VARCHAR, max_length=32),
+                FieldSchema(name="last_modified", dtype=DataType.INT64),
+                FieldSchema(name="access_permissions", dtype=DataType.VARCHAR, max_length=1024),
                 FieldSchema(name="page", dtype=DataType.INT64)
             ]
-            schema = CollectionSchema(fields, "Document chunks")
+            schema = CollectionSchema(fields, "Document chunks with metadata layer")
             collection = Collection(self.collection_name, schema)
-            # Create index for faster search
+            
+            # Create index for faster search (L2 for vectors)
             index_params = {
                 "metric_type": "L2",
                 "index_type": "IVF_FLAT",
                 "params": {"nlist": 1024}
             }
             collection.create_index(field_name="embedding", index_params=index_params)
-            print(f"Created collection {self.collection_name}")
+            
+            # Create scalar index for tenant-based filtering
+            collection.create_index(field_name="tenant_id", index_name="idx_tenant")
+            
+            print(f"Created collection {self.collection_name} with advanced metadata schema.")
         else:
             print(f"Collection {self.collection_name} exists")
             self.collection = Collection(self.collection_name)
@@ -51,19 +65,24 @@ class MilvusClient:
         
         collection = Collection(self.collection_name)
         
-        # Prepare data for insertion
-        # Milvus expects column-based data
-        entities = [
-            embeddings, 
-            chunks,     
-            [metadata.get("source", "unknown")] * len(chunks),
-            [metadata.get("page", 0)] * len(chunks) 
-        ]
+        # Prepare data for insertion (Milvus expects column-based data)
+        # Order must match FieldSchema in _ensure_collection (excluding auto_id if applicable, 
+        # but here we must omit 'id' if auto_id=True)
         
-        # NOTE: If we are passing per-chunk metadata, we should adjust the arguments.
-        # For now, let's assume 'metadata' applies to the whole batch or we get a list of metadata.
-        # Let's adjust upsert signature in caller or handle it here. 
-        # Assuming simple case: Upserting chunks from ONE document.
+        count = len(chunks)
+        entities = [
+            embeddings,                                         # embedding
+            chunks,                                             # text
+            [metadata.get("tenant_id", "default_tenant")] * count, # tenant_id
+            [metadata.get("document_id", "unknown_doc")] * count,  # document_id
+            [metadata.get("source", "unknown")] * count,        # source
+            [metadata.get("source_system", "system")] * count,  # source_system
+            [metadata.get("language", "en")] * count,           # language
+            [metadata.get("version", "1.0")] * count,           # version
+            [int(metadata.get("last_modified", 0))] * count,    # last_modified
+            [metadata.get("access_permissions", "public")] * count, # access_permissions
+            [metadata.get("page", 0)] * count                   # page
+        ]
         
         try:
             collection.insert(entities)
@@ -74,8 +93,8 @@ class MilvusClient:
             print(f"Upsert failed: {e}")
             return False
 
-    async def search(self, query_vector: List[float], limit: int = 5):
-        print("Searching Milvus...")
+    async def search(self, query_vector: List[float], limit: int = 5, tenant_id: str = "default_tenant"):
+        print(f"Searching Milvus for tenant: {tenant_id}...")
         collection = Collection(self.collection_name)
         collection.load()
         
@@ -84,12 +103,16 @@ class MilvusClient:
             "params": {"nprobe": 10},
         }
         
+        # Enforce tenant isolation via expression filter
+        expr = f"tenant_id == '{tenant_id}'"
+        
         results = collection.search(
             data=[query_vector], 
             anns_field="embedding", 
             param=search_params, 
             limit=limit, 
-            output_fields=["text", "source", "page"]
+            expr=expr,
+            output_fields=["text", "source", "page", "document_id", "tenant_id"]
         )
         
         retrieved = []

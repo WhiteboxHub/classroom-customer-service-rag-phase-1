@@ -4,6 +4,7 @@ from typing import Optional
 
 try:
     from docling.document_converter import DocumentConverter
+    from docling_core.types.doc import DoclingDocument
     DOCLING_AVAILABLE = True
 except ImportError:
     DOCLING_AVAILABLE = False
@@ -16,11 +17,11 @@ class DoclingProcessor:
         else:
             self.converter = None
 
-    def process(self, file_path: str) -> Optional[str]:
+    def process(self, file_path: str):
         """
-        Processes a file using Docling and returns the content as Markdown.
-        Handles PDF, HTML via Docling. Text files are read directly.
-        For JSON, it attempts to dump it as a string (or you might want specific handling).
+        Processes a file using Docling.
+        Returns Docling ConversionResult for PDFs/HTML/etc.
+        Returns str for .txt and .json.
         """
         if not os.path.exists(file_path):
             print(f"File not found: {file_path}")
@@ -28,7 +29,7 @@ class DoclingProcessor:
 
         file_ext = os.path.splitext(file_path)[1].lower()
 
-        # Handle .txt files directly (Docling doesn't support them)
+        # Handle .txt files directly
         if file_ext == '.txt':
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
@@ -45,9 +46,9 @@ class DoclingProcessor:
 
         print(f"Processing {file_path} with Docling...")
         try:
+            # Returns docling.document_converter.ConversionResult
             result = self.converter.convert(file_path)
-            # Export to Markdown is a common output for RAG
-            return result.document.export_to_markdown()
+            return result
         except Exception as e:
             print(f"Error processing file with Docling: {e}")
             return None
@@ -56,7 +57,6 @@ class DoclingProcessor:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            # Convert JSON to a string representation
             return json.dumps(data, indent=2)
         except Exception as e:
             print(f"Error processing JSON: {e}")

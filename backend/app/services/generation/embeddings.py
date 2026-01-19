@@ -3,27 +3,37 @@ from sentence_transformers import SentenceTransformer
 
 class EmbeddingService:
     def __init__(self):
-        # Initialize local embedding model (CPU-friendly, fast)
-        # 384 dimensions for all-MiniLM-L6-v2
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        # Initialize local embedding model: intfloat/e5-base-v2
+        # Dimensions: 768
+        self.model = SentenceTransformer('intfloat/e5-base-v2')
+        self.dimension = 768
 
-    def get_embedding(self, text: str) -> list[float]:
-        text = text.replace("\n", " ")
+    def get_embedding(self, text: str, is_query: bool = True) -> list[float]:
+        """
+        Generates embedding for a single text.
+        E5 models require 'query: ' prefix for queries and 'passage: ' for documents.
+        """
+        prefix = "query: " if is_query else "passage: "
+        text = prefix + text.replace("\n", " ")
+        
         try:
-            # Generate embedding
             embedding = self.model.encode(text).tolist()
             return embedding
         except Exception as e:
             print(f"Error generating embedding: {e}")
-            # all-MiniLM-L6-v2 has 384 dimensions
-            return [0.0] * 384 
+            return [0.0] * self.dimension
 
-    def get_embeddings(self, texts: list[str]) -> list[list[float]]:
-        # clean newlines
-        texts = [t.replace("\n", " ") for t in texts]
+    def get_embeddings(self, texts: list[str], is_query: bool = False) -> list[list[float]]:
+        """
+        Generates embeddings for a list of texts (batch).
+        Default is_query=False because this is mostly used during ingestion (passages).
+        """
+        prefix = "query: " if is_query else "passage: "
+        processed_texts = [prefix + t.replace("\n", " ") for t in texts]
+        
         try:
-            embeddings = self.model.encode(texts).tolist()
+            embeddings = self.model.encode(processed_texts).tolist()
             return embeddings
         except Exception as e:
             print(f"Error generating embeddings batch: {e}")
-            return [[0.0]*384 for _ in texts]
+            return [[0.0] * self.dimension for _ in texts]

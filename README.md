@@ -75,7 +75,7 @@ docker-compose logs -f ingestion
 
 **Note**: Ingestion only runs on first startup. Data persists in Milvus between restarts.
 
-### 3. Access Application
+### 4. Access Application
 
 **Open-WebUI**: http://localhost:8080
 
@@ -156,31 +156,33 @@ classroom-customer-service-rag-phase-1/
 ├── backend/
 │   ├── app/
 │   │   ├── api/v1/
-│   │   │   └── chat.py              # Chat API with RAG logic
+│   │   │   ├── chat.py              # Chat API with Tenant-Isolated search
+│   │   │   └── ingest.py            # Async ingestion endpoints
 │   │   ├── services/
 │   │   │   ├── ingestion/
-│   │   │   │   ├── scrapers.py      # Web scraping
-│   │   │   │   ├── docling_processor.py  # Document processing
-│   │   │   │   └── orchestrator.py  # Ingestion pipeline
+│   │   │   │   ├── scrapers.py      # Web scraping (Selenium)
+│   │   │   │   ├── docling_processor.py  # IBM Docling integration
+│   │   │   │   └── orchestrator.py  # Metadata & Ingestion Orchestration
 │   │   │   ├── chunking/
-│   │   │   │   └── semantic.py      # Semantic chunking
+│   │   │   │   └── semantic.py      # Docling HybridChunker (Structure-aware)
 │   │   │   ├── generation/
-│   │   │   │   └── embeddings.py    # Local embeddings
+│   │   │   │   └── embeddings.py    # E5-Base-V2 (768D) Implementation
 │   │   │   └── retrieval/
 │   │   │       └── vector_store/
-│   │   │           └── milvus.py    # Milvus client
+│   │   │           └── milvus.py    # Milvus 768D with Metadata schemas
 │   ├── trigger_ingest.py            # Main ingestion script
 │   └── Dockerfile
 ├── resources/
 │   ├── source_docs/                 # All documents
 │   └── models.yaml                  # Available LLM models
+├── ingestion_test_v2.py             # Metadata & Ingestion validation script
 ├── docker-compose.yml
 └── .env                             # Configuration
 ```
 
 ---
 
-## 🔄 Data Ingestion
+## 🔄 Data Ingestion & Processing
 
 ### Supported File Types
 
@@ -189,6 +191,24 @@ classroom-customer-service-rag-phase-1/
 - Text (`.txt`) - direct read
 - JSON (`.json`) - direct parse
 - DOCX (`.docx`) - via Docling
+
+### The Metadata Collection Layer
+In Phase 1, we implemented a dedicated layer to track:
+- **Document Identity**: Unique IDs across system boundaries.
+- **Multi-tenancy**: Mandatory `tenant_id` for every chunk.
+- **Lifecycle State**: `last_modified` and `version` tracking.
+- **Access Control**: Role-based permissions stored at the vector level.
+
+### Docling Structure-Aware Chunking
+We use **IBM Docling** to drive our chunking strategy:
+- **Table Integrity**: Tables are extracted as structured objects, preserving row/column relationships.
+- **Hierarchical Context**: Chunks respect section boundaries (headings, sub-headings).
+- **Hybrid Strategy**: Combines structural parsing with semantic token-based grouping.
+
+### Embedding Model: intfloat/e5-base-v2
+- **Vector Size**: 768 dimensions.
+- **Instructed Retrieval**: Uses `query: ` and `passage: ` prefixes for state-of-the-art accuracy.
+- **Efficiency**: CPU/GPU (MPS) optimized for local deployment.
 
 ### Ingestion Pipeline
 
@@ -228,26 +248,13 @@ docker-compose ps
 
 # Check backend logs
 docker-compose logs -f backend
-
-# Test API
-curl http://localhost:8000/v1/models
 ```
 
-### Test Queries
+### Performance Benchmarks (Phase 1)
 
-Try these questions to verify the system:
-
-1. **Simple Query**: "What is Kaiser Permanente?"
-2. **Document-Specific**: "What are provider responsibilities?"
-3. **Web Content**: "Tell me about community providers"
-4. **Out-of-Scope**: "What is the weather?" (should say "I don't know")
-
-### Performance Metrics
-
-- **Query Latency**: ~1.5-2.5 seconds
-- **Embedding**: ~50ms (local)
-- **Vector Search**: ~100ms
-- **LLM Generation**: ~1-2s
+- **Vector Lookup**: < 150ms (Milvus 768D IVF_FLAT)
+- **Metadata Filtering**: Instant (Scalar Indexing)
+- **Table Retrieval**: High Accuracy (Docling Contextual Chunks)
 
 ---
 
@@ -286,12 +293,12 @@ docker-compose up -d backend
 
 ### Ingested Data
 
-| Source Type | Files | Chunks | Status |
-|-------------|-------|--------|--------|
-| PDF | 2 | ~2,051 | ✅ |
-| HTML | 1 | 43 | ✅ |
-| Text | 2 | 10 | ✅ |
-| **Total** | **5** | **~2,104** | **✅** |
+| Source Type | Processor | Chunks | Metadata Layer |
+|-------------|-----------|--------|----------------|
+| PDF | Docling | Struct-Aware | ✅ Active |
+| HTML | Docling | Struct-Aware | ✅ Active |
+| Text | Custom | Semantic | ✅ Active |
+| JSON | Stringify | Structured | ✅ Active |
 
 ### Available Models
 
@@ -386,18 +393,13 @@ docker-compose restart backend
 
 ## 🚀 Next Steps (Phase 2+)
 
-Potential enhancements:
-
 1. **Real Confluence Integration**
-2. **Advanced Chunking** (hierarchical/sliding window)
-3. **Metadata Enrichment** (dates, authors, sections)
-4. **Hybrid Search** (vector + keyword)
-5. **Re-ranking** (cross-encoder)
-6. **Monitoring** (Prometheus, Grafana)
-7. **Authentication** (secure API/UI)
-8. **Multi-tenancy**
-9. **Incremental Updates**
-10. **Analytics Dashboard**
+2. **PostgreSQL Relational Metadata Sync** (Synchronizing vector fields with persistent SQL tables)
+3. **Hybrid Search** (vector + keyword functionality)
+4. **Re-ranking** (Cross-encoder integration)
+5. **Observability** (Prometheus, Grafana for retrieval metrics)
+6. **Incremental Document Updates** (upsert based on version tags)
+7. **Analytics Dashboard**
 
 ---
 
@@ -411,11 +413,10 @@ Potential enhancements:
 
 ---
 
-## 📞 Support
+## Support
 
 For issues:
 1. Check logs: `docker-compose logs -f`
 2. Verify services: `docker-compose ps`
-3. Review this README
 
 
