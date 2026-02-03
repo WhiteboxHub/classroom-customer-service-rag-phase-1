@@ -1,7 +1,19 @@
 models:
+  # Groq Models (fast, cost-effective)
+  - id: llama-3.3-70b-versatile
+    provider: groq
+    type: chat
+  - id: llama-3.1-8b-instant
+    provider: groq
+    type: chat
+  
+  # OpenAI Models (alternative provider)
   - id: gpt-4o
     provider: openai
     type: chat
-  - id: text-embedding-ada-002
+  - id: gpt-4o-mini
     provider: openai
-    type: embedding
+    type: chat
+  - id: gpt-3.5-turbo
+    provider: openai
+    type: chat

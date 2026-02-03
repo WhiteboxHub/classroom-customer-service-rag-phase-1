@@ -1,3 +1,4 @@
+# classroom-customer-service-rag-phase-1\docker-compose.ops.yml
 version: '3.8'
 
 services:
@@ -14,8 +15,8 @@ services:
     container_name: grafana
     ports:
       - "3001:3000"
-    volumes:
-      - ./observability/grafana/provisioning:/etc/grafana/provisioning
-      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    # volumes:
+    #   - ./observability/grafana/provisioning:/etc/grafana/provisioning
+    #   - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
