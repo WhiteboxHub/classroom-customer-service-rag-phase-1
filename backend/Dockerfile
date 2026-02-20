@@ -29,7 +29,12 @@ RUN pip install --no-cache-dir \
     selenium>=4.0.0 \
     beautifulsoup4>=4.0.0 \
     docling \
-    sentence-transformers
+    sentence-transformers \
+    prometheus-client>=0.19.0 \
+    ragas>=0.1.0 \
+    datasets>=2.14.0 \
+    langchain-groq>=0.1.0 \
+    langchain-community>=0.0.20
 
 # Copy app code
 COPY app ./app

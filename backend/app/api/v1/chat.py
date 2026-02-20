@@ -1,11 +1,28 @@
 # classroom-customer-service-rag-phase-1\backend\app\api\v1\chat.py
 import yaml
 import os
+import time
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional
 
 router = APIRouter()
+
+# Lazy-import Prometheus metrics (avoids circular import)
+def _metrics():
+    from app.api.v1.observability import (
+        RAG_REQUESTS_TOTAL,
+        RAG_LATENCY_SECONDS,
+        RAG_RETRIEVED_CHUNKS,
+        RAG_CONTEXT_LENGTH,
+        RAG_ACTIVE_REQUESTS,
+        RAG_RETRIEVAL_EMPTY,
+    )
+    return (
+        RAG_REQUESTS_TOTAL, RAG_LATENCY_SECONDS,
+        RAG_RETRIEVED_CHUNKS, RAG_CONTEXT_LENGTH,
+        RAG_ACTIVE_REQUESTS, RAG_RETRIEVAL_EMPTY,
+    )
 
 class Message(BaseModel):
     role: str
@@ -71,6 +88,14 @@ async def list_models():
 
 @router.post("/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
+    # ── Prometheus instrumentation ──────────────────────────────────────────
+    (
+        REQ_TOTAL, LATENCY, CHUNKS,
+        CTX_LEN, ACTIVE, EMPTY
+    ) = _metrics()
+    ACTIVE.inc()
+    t_total_start = time.time()
+
     # 1. Extract latest user query and history
     user_query = request.messages[-1].content
     
@@ -93,19 +118,28 @@ async def chat_completions(request: ChatCompletionRequest):
     # 2. Embed query
     from app.services.generation.embeddings import EmbeddingService
     embedder = EmbeddingService()
+    t_embed = time.time()
     query_vector = embedder.get_embedding(search_query)
+    LATENCY.labels(phase="embed").observe(time.time() - t_embed)
     
     # 3. Retrieve context
     from app.services.retrieval.vector_store.milvus import MilvusClient
     vector_store = MilvusClient()
+    t_retrieve = time.time()
     try:
         context_docs = await vector_store.search(query_vector, limit=5)
         context_text = "\n\n".join(context_docs)
     except Exception as e:
         print(f"Retrieval failed: {e}")
         context_text = ""
-        
-    print(f"Retrieved context length: {len(context_text)}")
+        context_docs = []
+
+    LATENCY.labels(phase="retrieve").observe(time.time() - t_retrieve)
+    CHUNKS.observe(len(context_docs))
+    CTX_LEN.observe(len(context_text))
+    if not context_docs:
+        EMPTY.inc()
+    print(f"Retrieved {len(context_docs)} chunks, context length: {len(context_text)}")
 
     # 4. Construct System Prompt with Context
     system_prompt = f"""You are a helpful customer service assistant for Kaiser Permanente. 
@@ -169,11 +203,13 @@ Context:
     messages.append({"role": "user", "content": user_query})
     
     try:
+        t_llm = time.time()
         response = client.chat.completions.create(
             model=request.model or default_model,
             messages=messages,
             stream=False # simplified for now
         )
+        LATENCY.labels(phase="llm").observe(time.time() - t_llm)
         
         return {
             "id": response.id,
@@ -194,7 +230,13 @@ Context:
                 "total_tokens": response.usage.total_tokens
             }
         }
+        REQ_TOTAL.labels(model=request.model or default_model, status="success").inc()
+        LATENCY.labels(phase="total").observe(time.time() - t_total_start)
+        ACTIVE.dec()
     except Exception as e:
+        REQ_TOTAL.labels(model=request.model or default_model, status="error").inc()
+        LATENCY.labels(phase="total").observe(time.time() - t_total_start)
+        ACTIVE.dec()
         print(f"LLM call failed: {e}")
         return {
             "id": "error",
@@ -210,3 +252,4 @@ Context:
                 "finish_reason": "stop"
             }]
         }
+

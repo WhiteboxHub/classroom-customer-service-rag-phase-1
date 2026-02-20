@@ -5,5 +5,79 @@
         "contexts": [
             "benefits_summary_2025.pdf"
         ]
+    },
+    {
+        "query": "What are the provider responsibilities for Kaiser Permanente community providers?",
+        "ground_truth": "Community providers are responsible for coordinating care with Kaiser Permanente, maintaining clinical standards, submitting claims accurately, and ensuring timely access to services for enrolled members.",
+        "contexts": [
+            "community_provider_manual.pdf",
+            "provider_guidelines.html"
+        ]
+    },
+    {
+        "query": "How does the contracting process work for new HMO providers?",
+        "ground_truth": "New HMO providers must submit a credentialing application, pass a background and clinical review, negotiate contract terms with Kaiser Permanente, and sign a participation agreement before seeing members.",
+        "contexts": [
+            "contracting_guide.pdf",
+            "hmo_manual.html"
+        ]
+    },
+    {
+        "query": "What information is included in the HMO provider manual?",
+        "ground_truth": "The HMO provider manual includes information on member eligibility verification, claims submission procedures, referral and authorization requirements, quality improvement standards, and contact directories.",
+        "contexts": [
+            "hmo_manual.html"
+        ]
+    },
+    {
+        "query": "What are the authorization requirements for specialist referrals?",
+        "ground_truth": "Specialist referrals require prior authorization from the primary care physician and must be submitted through Kaiser Permanente's authorization portal. Urgent referrals may have a 24-hour turnaround while routine referrals take up to 5 business days.",
+        "contexts": [
+            "authorization_guidelines.pdf",
+            "hmo_manual.html"
+        ]
+    },
+    {
+        "query": "How can I update my provider Tax ID association in my Online Affiliate account?",
+        "ground_truth": "To update your provider Tax ID association or add a new one, sign in to 'Manage my account' at https://accessnow-ap.kp.org/kpim-ap/secure and select 'Provider associations and access'. If your Tax ID has changed, you must also notify your regional representative and may need to provide a copy of your W9.",
+        "contexts": [
+            "national-contracting-faq.txt"
+        ]
+    },
+    {
+        "query": "What are the contact emails for Tridiuum Behavioral Health portal issues in California?",
+        "ground_truth": "For technical issues with the Tridiuum Behavioral Health portal, Southern California providers should email SCAL-BH-Panel@kp.org, and Northern California providers should email MentalHealthExternalProviderQA@kp.org.",
+        "contexts": [
+            "national-contracting-faq.txt"
+        ]
+    },
+    {
+        "query": "What should a third-party administrator do to gain access to the Online Affiliate portal?",
+        "ground_truth": "Third-party administrators contracted for claim, billing, or patient verification services must request specific access forms by emailing their Online Affiliate regional representative.",
+        "contexts": [
+            "national-contracting-faq.txt"
+        ]
+    },
+    {
+        "query": "How can I navigate between different Kaiser Permanente regions in the portal?",
+        "ground_truth": "If you have approved access to multiple regions, you can navigate between them through the 'Manage my account' section using the regional portal links.",
+        "contexts": [
+            "national-contracting-faq.txt"
+        ]
+    },
+    {
+        "query": "What is the general claims filing deadline for Northern California HMO providers?",
+        "ground_truth": "Generally, initial claims must be submitted within 90 to 180 days from the date of service, depending on the specific provider contract and the member's plan type (e.g., HMO or Self-Funded). Refer to the KP Northern CA HMO Provider Manual for exact deadlines.",
+        "contexts": [
+            "kp-northern-ca-hmo-provider-manual.pdf"
+        ]
+    },
+    {
+        "query": "How can providers verify member eligibility?",
+        "ground_truth": "Providers can verify member eligibility through the Online Affiliate portal, by calling the Member Services department, or by checking the member's Kaiser Permanente identification card for the health plan type and effective dates.",
+        "contexts": [
+            "provider-info.html",
+            "kp-northern-ca-hmo-provider-manual.pdf"
+        ]
     }
 ]

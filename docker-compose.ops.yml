@@ -1,4 +1,7 @@
-# classroom-customer-service-rag-phase-1\docker-compose.ops.yml
+# classroom-customer-service-rag-phase-1/docker-compose.ops.yml
+# Monitoring stack — start with: docker-compose -f docker-compose.ops.yml up -d
+# Requires the main stack to be running first: docker-compose up -d
+
 version: '3.8'
 
 services:
@@ -9,14 +12,36 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - rag_default
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
       - "3001:3000"
-    # volumes:
-    #   - ./observability/grafana/provisioning:/etc/grafana/provisioning
-    #   - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    networks:
+      - rag_default
+
+volumes:
+  grafana-data:
+
+
+networks:
+  rag_default:
+    external: true
+    name: classroom-customer-service-rag-phase-1_default
