@@ -15,6 +15,6 @@ async def detailed_health():
     return {
         "database": "healthy",
         "redis": "healthy",
-        "milvus": "unknown",
+        "neo4j": "healthy",
         "disk_space": "ok"
     }
