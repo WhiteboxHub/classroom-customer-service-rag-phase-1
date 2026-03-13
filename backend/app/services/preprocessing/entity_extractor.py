@@ -35,29 +35,25 @@ def _get_nlp():
 
 # ── spaCy label → our canonical type ──────────────────────────────────────────
 _LABEL_MAP: Dict[str, str] = {
-    "PERSON": "Person",
-    "ORG": "Organization",
-    "GPE": "Location",
-    "LOC": "Location",
-    "PRODUCT": "Product",
-    "NORP": "Concept",
-    "EVENT": "Concept",
-    "LAW": "Concept",
-    "WORK_OF_ART": "Concept",
-    "FAC": "Location",
+    "PERSON": "PERSON",
+    "ORG": "ORGANIZATION",
+    "GPE": "LOCATION",
+    "LOC": "LOCATION",
+    "PRODUCT": "PRODUCT",
 }
 
 _SYSTEM_KEYWORDS = {"system", "platform", "service", "portal", "engine", "module"}
+DEFAULT_ENTITY_TYPE = "ENTITY"
 
 
 def _classify_entity(text: str, spacy_label: str) -> str:
     """
     Return our canonical entity type for a given (text, spaCy label) pair.
-    Tokens containing "System"-like words are re-classified as 'System'.
+    Tokens containing "System"-like words are re-classified as 'TECHNOLOGY'.
     """
     if any(kw in text.lower() for kw in _SYSTEM_KEYWORDS):
-        return "System"
-    return _LABEL_MAP.get(spacy_label, "Concept")
+        return "TECHNOLOGY"
+    return _LABEL_MAP.get(spacy_label, DEFAULT_ENTITY_TYPE)
 
 
 class EntityExtractor:

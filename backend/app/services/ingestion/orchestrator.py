@@ -94,6 +94,10 @@ class IngestionOrchestrator:
 
             # 2c. Embedding generation
             embedding = self.embedder.embed(chunk_text)
+            
+            # Embed each entity
+            for ent in entities:
+                ent["embedding"] = self.embedder.embed(ent["entity"])
 
             # 2d. Write everything to Neo4j
             self.graph_store.ingest_chunk_pipeline(
@@ -101,6 +105,7 @@ class IngestionOrchestrator:
                 embedding=embedding,
                 entities=entities,
                 relationships=relationships,
+                document_metadata=document_metadata,
             )
 
             print(

@@ -33,8 +33,21 @@ def _get_nlp():
     return _nlp
 
 
+RELATION_MAP: Dict[str, str] = {
+    "contact": "CONTACTED",
+    "use": "USES",
+    "have": "HAS",
+    "contain": "CONTAINS",
+    "include": "INCLUDES",
+    "require": "REQUIRES",
+}
+
 def _clean_relation(lemma: str) -> str:
     """Normalise a verb lemma into a Neo4j-safe relationship type string."""
+    lower_lemma = lemma.lower()
+    if lower_lemma in RELATION_MAP:
+        return RELATION_MAP[lower_lemma]
+    
     cleaned = re.sub(r"[^a-zA-Z0-9_]", "_", lemma.upper())
     return cleaned.strip("_") or "RELATED_TO"
 

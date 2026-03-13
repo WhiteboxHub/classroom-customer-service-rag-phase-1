@@ -24,6 +24,11 @@ from app.services.database.neo4j_client import Neo4jClient
 
 # ── Constraint & index statements ─────────────────────────────────────────────
 
+_DOCUMENT_CONSTRAINT = """
+CREATE CONSTRAINT document_id_unique IF NOT EXISTS
+FOR (d:Document) REQUIRE d.id IS UNIQUE
+"""
+
 _CHUNK_CONSTRAINT = """
 CREATE CONSTRAINT chunk_id_unique IF NOT EXISTS
 FOR (c:Chunk) REQUIRE c.id IS UNIQUE
@@ -34,12 +39,7 @@ CREATE CONSTRAINT entity_name_unique IF NOT EXISTS
 FOR (e:Entity) REQUIRE e.name IS UNIQUE
 """
 
-_ENTITY_NAME_INDEX = """
-CREATE INDEX entity_name_index IF NOT EXISTS
-FOR (e:Entity) ON (e.name)
-"""
-
-_VECTOR_INDEX = """
+_CHUNK_VECTOR_INDEX = """
 CREATE VECTOR INDEX chunk_embedding_index IF NOT EXISTS
 FOR (c:Chunk) ON (c.embedding)
 OPTIONS {
@@ -48,6 +48,27 @@ OPTIONS {
     `vector.similarity_function`: 'cosine'
   }
 }
+"""
+
+_ENTITY_VECTOR_INDEX = """
+CREATE VECTOR INDEX entity_embedding_index IF NOT EXISTS
+FOR (e:Entity) ON (e.embedding)
+OPTIONS {
+  indexConfig: {
+    `vector.dimensions`: 384,
+    `vector.similarity_function`: 'cosine'
+  }
+}
+"""
+
+_CHUNK_TEXT_INDEX = """
+CREATE FULLTEXT INDEX chunk_text_index IF NOT EXISTS
+FOR (c:Chunk) ON EACH [c.text]
+"""
+
+_ENTITY_TEXT_INDEX = """
+CREATE FULLTEXT INDEX entity_name_index_ft IF NOT EXISTS
+FOR (e:Entity) ON EACH [e.name]
 """
 
 
@@ -61,10 +82,13 @@ def initialize_schema(client: Neo4jClient) -> None:
         client: An active Neo4jClient instance.
     """
     statements = [
-        ("Chunk uniqueness constraint", _CHUNK_CONSTRAINT),
-        ("Entity uniqueness constraint", _ENTITY_CONSTRAINT),
-        ("Entity name B-tree index", _ENTITY_NAME_INDEX),
-        ("Chunk embedding vector index", _VECTOR_INDEX),
+        ("Document ID constraint", _DOCUMENT_CONSTRAINT),
+        ("Chunk ID constraint", _CHUNK_CONSTRAINT),
+        ("Entity name constraint", _ENTITY_CONSTRAINT),
+        ("Chunk embedding vector index", _CHUNK_VECTOR_INDEX),
+        ("Entity embedding vector index", _ENTITY_VECTOR_INDEX),
+        ("Chunk text full-text index", _CHUNK_TEXT_INDEX),
+        ("Entity name full-text index", _ENTITY_TEXT_INDEX),
     ]
 
     with client.session() as session:

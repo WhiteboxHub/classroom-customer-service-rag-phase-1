@@ -19,33 +19,47 @@ from app.services.database.neo4j_client import Neo4jClient
 
 # ── Cypher templates ──────────────────────────────────────────────────────────
 
+_MERGE_DOCUMENT = """
+MERGE (d:Document {id: $document_id})
+"""
+
 _MERGE_CHUNK = """
+MATCH (d:Document {id: $document_id})
 MERGE (c:Chunk {id: $chunk_id})
 SET c.text            = $text,
     c.embedding       = $embedding,
     c.source_document = $source_document,
     c.chunk_index     = $chunk_index
+MERGE (d)-[:HAS_CHUNK]->(c)
 """
 
+# Dynamic node label — inject via Python string formatting after validating type
 _MERGE_ENTITY = """
-MERGE (e:Entity {name: $name})
-SET e.type = $type
+MERGE (e:Entity {{name: $name}})
+SET e:{entity_type},
+    e.type = $type,
+    e.embedding = $embedding
 """
 
 _MERGE_MENTIONED_IN = """
-MATCH (e:Entity {name: $entity_name})
 MATCH (c:Chunk   {id:   $chunk_id})
-MERGE (e)-[:MENTIONED_IN]->(c)
+MATCH (e:Entity {name: $entity_name})
+MERGE (c)-[:MENTIONS]->(e)
 """
 
-# Dynamic relationship type — inject via Python string formatting after
-# validating that the type is safe (alphanumeric + underscores only).
+# Dynamic relationship type — validate before injecting
 _MERGE_ENTITY_REL = """
 MATCH (a:Entity {{name: $source}})
 MATCH (b:Entity {{name: $target}})
 MERGE (a)-[:{rel_type}]->(b)
 """
 
+
+def _safe_label(label: str) -> str:
+    """Sanitise an entity type label to be safe for Cypher injection."""
+    import re
+    sanitised = re.sub(r"[^A-Z0-9_]", "_", label.upper())
+    return sanitised.strip("_") or "ENTITY"
 
 def _safe_rel_type(rel: str) -> str:
     """
@@ -70,21 +84,22 @@ class GraphIngestion:
 
     # ── atomic write methods ──────────────────────────────────────────────────
 
+    def store_document(self, document_id: str) -> None:
+        """Create or match the Document node."""
+        self._client.run(_MERGE_DOCUMENT, document_id=document_id)
+
     def store_chunk(
         self,
         chunk: Dict[str, Any],
         embedding: List[float],
+        document_id: str,
     ) -> None:
         """
-        Create (or update) a Chunk node in Neo4j.
-
-        Args:
-            chunk:     Chunk dict from SemanticChunker (must have chunk_id, text,
-                       source_document, chunk_index).
-            embedding: 384-dimensional float list from EmbeddingModel.
+        Create (or update) a Chunk node and link it to its Document.
         """
         self._client.run(
             _MERGE_CHUNK,
+            document_id=document_id,
             chunk_id=chunk["chunk_id"],
             text=chunk["text"],
             embedding=embedding,
@@ -94,21 +109,22 @@ class GraphIngestion:
 
     def store_entities(
         self,
-        entities: List[Dict[str, str]],
+        entities: List[Dict[str, Any]],
         chunk_id: str,
     ) -> None:
         """
-        MERGE all entities and link them to a Chunk via :MENTIONED_IN.
-
-        Args:
-            entities: Output of EntityExtractor.extract().
-            chunk_id: The chunk_id of the chunk these entities appear in.
+        MERGE all entities, set their ontology label + embed, 
+        and link Chunk -> Entity via :MENTIONS.
         """
         for entity in entities:
             name = entity["entity"]
             etype = entity["type"]
-            self._client.run(_MERGE_ENTITY, name=name, type=etype)
-            self._client.run(_MERGE_MENTIONED_IN, entity_name=name, chunk_id=chunk_id)
+            emb = entity.get("embedding", [])
+            safe_type = _safe_label(etype)
+            
+            cypher = _MERGE_ENTITY.format(entity_type=safe_type)
+            self._client.run(cypher, name=name, type=etype, embedding=emb)
+            self._client.run(_MERGE_MENTIONED_IN, chunk_id=chunk_id, entity_name=name)
 
     def store_relationships(
         self,
@@ -116,12 +132,6 @@ class GraphIngestion:
     ) -> None:
         """
         MERGE entity-to-entity relationships in the graph.
-
-        The relationship type comes from RelationshipExtractor and is
-        upper-cased / sanitised before being embedded in Cypher.
-
-        Args:
-            relationships: Output of RelationshipExtractor.extract().
         """
         for rel in relationships:
             rel_type = _safe_rel_type(rel["relation"])
@@ -138,23 +148,18 @@ class GraphIngestion:
         self,
         chunk: Dict[str, Any],
         embedding: List[float],
-        entities: List[Dict[str, str]],
+        entities: List[Dict[str, Any]],
         relationships: List[Dict[str, str]],
+        document_metadata: Dict[str, Any] = None,
     ) -> None:
         """
         Write one complete chunk's data to Neo4j in a single logical operation.
-
-        Order:
-            1. Store Chunk node (with embedding)
-            2. Store Entity nodes + :MENTIONED_IN edges
-            3. Store entity-to-entity relationships
-
-        Args:
-            chunk:         Chunk dict from SemanticChunker.
-            embedding:     Vector from EmbeddingModel.
-            entities:      Entities from EntityExtractor.
-            relationships: Relationships from RelationshipExtractor.
         """
-        self.store_chunk(chunk, embedding)
+        doc_id = chunk.get("source_document", "unknown")
+        if document_metadata and "id" in document_metadata:
+            doc_id = document_metadata["id"]
+            
+        self.store_document(doc_id)
+        self.store_chunk(chunk, embedding, doc_id)
         self.store_entities(entities, chunk["chunk_id"])
         self.store_relationships(relationships)
