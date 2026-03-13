@@ -1,7 +1,7 @@
 [project]
 name = "classroom-customer-service-rag-phase-1"
-version = "0.1.0"
-description = "Backend for Kaiser Customer Call Center Agent RAG"
+version = "0.2.0"
+description = "Backend for Kaiser Customer Call Center Agent RAG — GraphRAG with Neo4j"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -12,8 +12,24 @@ dependencies = [
     "requests>=2.31.0",
     "celery>=5.3.0",
     "redis>=5.0.0",
-    # "langchain>=0.1.0", # Uncomment when ready to integrate
-    # "openai>=1.0.0",
+    # Neo4j — replaces Milvus
+    "neo4j>=5.0.0",
+    # Embeddings
+    "sentence-transformers>=2.2.0",
+    "torch>=2.0.0",
+    # Entity extraction
+    "spacy>=3.7.0",
+    # Async support
+    "anyio>=3.7.0",
+    "pypdf2>=3.0.0",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
 ]
 
 [build-system]
