@@ -1,42 +1,41 @@
 # Classroom Customer Service RAG - Phase 1
 
-**Kaiser Customer Call Center Agent (GraphRAG Edition)**
+**Kaiser Customer Call Center Agent (Enterprise GraphRAG Edition)**
 
 This project implements Phase 1 of the Retrieval Augmented Generation (RAG) system for the Kaiser Customer Call Center. It provides agents with accurate, context-aware answers derived from internal documentation. 
 
-This phase has been upgraded from a standard Vector RAG pipeline to a **GraphRAG pipeline using Neo4j**, enabling deep entity relationships, context expansion, and more accurate multi-hop reasoning.
+This phase has been heavily re-architected from a standard Vector RAG pipeline to a **Production-Quality GraphRAG pipeline using Neo4j**, enabling strict ontology-driven entity extraction, dual node-level embeddings, and hybrid multi-strategy retrieval for maximum accuracy and multi-hop reasoning.
 
 ---
 
 ## 💡 Project Overview
-Customer service agents often struggle to find the right information quickly across multiple disconnected knowledge bases. This project unifies these sources into a single GraphRAG pipeline capable of reading documents, extracting medical and organizational entities, understanding their relationships, and using an LLM to generate precise answers.
+Customer service agents often struggle to find the right information quickly across multiple disconnected knowledge bases. This project unifies these sources into a single advanced GraphRAG pipeline capable of reading documents, extracting medical and organizational entities according to a strict ontology, mapping their semantic relationships, and executing complex hybrid retrieval strategies to generate hallucination-free answers.
 
 ---
 
 ## 🏗 Architecture & Workflow
 
-The system follows a microservices architecture orchestrated via Docker Compose.
+The system follows a microservices architecture orchestrated via Docker Compose, built entirely around the **Neo4j Graph Database**.
 
 ### Core Workflow (GraphRAG Pipeline)
-1. **Ingestion & Chunking**: The `/api/v1/ingest` and `/api/v1/ingest/pdf` endpoints accept text or PDF files. Documents are parsed and split into overlapping textual chunks using the `SemanticChunker`.
-2. **Entity Extraction**: `spaCy` NLP automatically extracts nouns into canonical types: Person, Organization, Location, Product, System, and Concept.
-3. **Relationship Extraction**: Using linguistic dependency parsing, the system draws verb-based relationships between the extracted entities (e.g., `(Alice)-[:WORKS_AT]->(Kaiser)`).
-4. **Vector Embedding**: Each chunk is converted into a 384-dimensional dense vector using `sentence-transformers` (`all-MiniLM-L6-v2`).
-5. **Graph Storage**: The text chunks, vectors, entities, and relationship edges are stored atomically in **Neo4j** (`graph_ingestion.py`).
-6. **Two-Stage Retrieval**: When a query hits `/api/v1/chat/completions`:
-   - **Vector Search**: Finds the closest matching chunks using Neo4j's vector index.
-   - **Graph Expansion**: Traverses the graph from the winning chunks to find shared entities and pulls in neighboring chunks to broaden the LLM's context.
-7. **Generation**: An LLM (via Groq or OpenAI) synthesizes an answer using the retrieved neighborhood.
+1. **Ingestion & Chunking**: The `/api/v1/ingest` and `/api/v1/ingest/pdf` endpoints accept text or PDF files. Documents are parsed and safely chunked via the `SemanticChunker`.
+2. **Ontology-Driven Extraction**: `spaCy` NLP automatically extracts nouns into a strict canon: `PERSON`, `ORGANIZATION`, `LOCATION`, `PRODUCT`, `TECHNOLOGY` (falling back to a generic `ENTITY` designation when necessary).
+3. **Relation Normalization**: Using linguistic dependency parsing, the system maps structural verb relationships between extracted entities dynamically, falling back to a normalized `RELATED_TO` semantic bridge where linguistic verbs fail to map cleanly.
+4. **Dual Node-Level Vector Embedding**: *Both* Chunks and individual Entities are explicitly converted into 384-dimensional dense vectors using `sentence-transformers` (`all-MiniLM-L6-v2`) prior to storage.
+5. **Idempotent Graph Storage**: The Document metadata, text chunks, vectors, entities, and edges are written natively to **Neo4j** via strict `MERGE` constraints. No duplicates are created. The graph strictly enforces the pattern: `(Document)-[:HAS_CHUNK]->(Chunk)-[:MENTIONS]->(Entity)-[:RELATION]->(Entity)`.
+6. **Hybrid Three-Stage Retrieval**: When a query hits `/api/v1/chat/completions`, the `Neo4jRetriever` combines:
+   - **Semantic Search**: Parallel Cosine vector similarity across both Chunks *and* Entities.
+   - **Keyword Search**: Native Neo4j Fulltext index matching across Text and Names.
+   - **Graph Traversal**: Explicit multi-hop path expansion outwards from matched entities to discover bridging knowledge.
+7. **Generation**: An LLM (via Groq or OpenAI) synthesizes an answer using the hyper-dense, deduplicated context dictionary.
 
 ---
 
-## 🚀 Features Implemented
-* Complete removal of Milvus in favor of **Neo4j Graph Database**.
-* Automated natural language processing (NLP) using **spaCy**.
-* Local, high-performance vector embeddings via **sentence-transformers**.
-* PDF file upload and parsing using **PyPDF2**.
-* FastAPI-based **background task workers** for immediate API responses during ingestion.
-* A React-based **Open WebUI** for ChatGPT-like agent interactions.
+## 🚀 Key AI/ML Upgrades
+* **Strict Ontology Typing**: SPAcy outputs map securely to `PERSON`, `ORG`, `LOC`, `PRODUCT`, and `TECHNOLOGY` ensuring the LLM doesn't hallucinate definitions.
+* **Granular Entity Embeddings**: Vector math runs against discrete entity strings natively using Neo4j Vector Indexes, not just massive vague text chunks.
+* **Deduplicated Hybrid Search**: By blending Semantic, Full-text, and Navigational Graph Traversals, the retriever pulls back context a pure-vector Milvus database mathematically cannot see.
+* **Idempotent Merging**: You can ingest the same document repeatedly and Neo4j will update properties rather than stacking redundant nodes.
 
 ---
 
@@ -64,7 +63,7 @@ The system follows a microservices architecture orchestrated via Docker Compose.
 │   │   │   ├── generation/      # LLM answer synthesis
 │   │   │   ├── ingestion/       # Graph write operations & Orchestrator
 │   │   │   ├── preprocessing/   # spaCy Entity & Relationship NLP extractors
-│   │   │   └── retrieval/       # Two-stage Vector + Graph retrieval
+│   │   │   └── retrieval/       # Hybrid Neo4j Vector + Graph retrieval
 │   │   └── workers/        # Celery task definitions
 │   ├── scripts/            # Maintenance scripts
 │   └── tests/              # Pytest Unit tests with Dependency Mocking
@@ -74,6 +73,7 @@ The system follows a microservices architecture orchestrated via Docker Compose.
 ├── observability/          # Prometheus & Grafana configs
 ├── docker-compose.yml      # Main stack definition
 ├── pyproject.toml          # Python project dependencies
+├── compare_rag.py          # Testing script validating Hybrid GraphRAG superiority
 └── README.md               # This documentation
 ```
 
@@ -95,9 +95,6 @@ Defined in `backend/app/core/config.py` and configurable via the `.env` file:
 | `LLM_PROVIDER` | `groq` or `openai` | `"groq"` |
 | `GROQ_API_KEY` | Your Groq API Key | `""` |
 | `OPENAI_API_KEY` | Your OpenAI API Key | `""` |
-| `POSTGRES_USER` | Relational DB User | `"postgres"` |
-| `POSTGRES_PASSWORD`| Relational DB Password | `"postgres"` |
-| `POSTGRES_DB` | Relational DB Name | `"rag_app"` |
 
 ---
 
@@ -108,7 +105,6 @@ Defined in `backend/pyproject.toml`:
 * **Graph & Data**: `neo4j`
 * **NLP & Embeddings**: `spacy`, `sentence-transformers`, `torch`
 * **File Processing**: `pypdf2`, `python-multipart`
-* **Testing**: `pytest`, `pytest-asyncio`
 
 ---
 
@@ -139,15 +135,20 @@ docker-compose up -d --build
 
 ## 📖 Example Usage
 
-1. **Ingesting a PDF**:
-   Head to `http://localhost:8000/docs`, expand `POST /api/v1/ingest/pdf`, click "Try it out", upload a PDF, and click Execute. The system will parse it, extract entities in the background, and load them into Neo4j.
+1. **Testing Hybrid Retrieval Quality**:
+   From your local backend virtual environment, execute the comparison script:
+   ```bash
+   $env:PYTHONPATH="backend"
+   python compare_rag.py
+   ```
+   *Witness how the Graph traversal captures exact entities and relations a standard Vector Search completely misses.*
 
-2. **Viewing the Knowledge Graph**:
+2. **Ingesting a PDF**:
+   Head to `http://localhost:8000/docs`, expand `POST /api/v1/ingest/pdf`, click "Try it out", upload a PDF, and click Execute. The system will parse it, extract entities to ontology rules, embed the entities, and write idempotent graph edges securely!
+
+3. **Viewing the Knowledge Graph**:
    Head to `http://localhost:7474`. Log in with `neo4j / password`. Run the Cypher query:
    ```cypher
-   MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 300
+   MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)-[:MENTIONS]->(e:Entity) RETURN d, c, e LIMIT 300
    ```
-   You will see an interactive map of text chunks securely linked to organizational concepts!
-
-3. **Asking a Question**:
-   Access the Open WebUI at `http://localhost:8080` (or `http://localhost:8085` if you altered your docker-compose file). Type natural language questions like *"What is the Kaiser Billing Policy?"* and receive AI answers infused with the Neo4j graph context.
+   You will see an interactive map of text chunks securely linked to strict organizational concepts!
